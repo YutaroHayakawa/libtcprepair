@@ -9,6 +9,8 @@
 #include <errno.h>
 #include <stddef.h>
 
+#include "libtcprepair.h"
+
 #define TCPOPT_MAXSEG 2
 #define TCPOLEN_MAXSEG 4
 #define TCPOPT_WINDOW 3
@@ -19,17 +21,6 @@
 #define TCPOLEN_TIMESTAMP 10
 
 #define TCP_REPAIR_QSIZE 0xFFFF
-
-struct tcp_repair_state {
-  uint32_t seq;
-  uint32_t ack;
-  uint64_t recvq_len;
-  uint64_t sendq_len;
-  struct tcp_repair_window window;
-  struct tcp_repair_opt opt_mss;
-  uint8_t *recvq;
-  uint8_t *sendq;
-};
 
 #define try(funccall) do { \
   int err; \
@@ -251,7 +242,7 @@ int tcp_repair_insert_state(int sock, struct tcp_repair_state *state,
   return tcp_repair_set_state(sock, state, saddr, daddr);
 }
 
-ssize_t tcp_repair_serialize(struct tcp_repair_state *state, uint8_t *buf, size_t len) {
+ssize_t tcp_repair_serialize(struct tcp_repair_state *state, uint8_t *buf, ssize_t len) {
   ssize_t calc_len = calculate_serialized_len(state);
 
   if (buf == NULL) {
