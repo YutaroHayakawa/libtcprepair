@@ -11,6 +11,9 @@
 
 #include "libtcprepair.h"
 
+/* length of fixed part of struct tcp_repair_state */
+static const size_t fixed_part_len = offsetof(struct tcp_repair_state, recvq);
+
 #define TCPOPT_MAXSEG 2
 #define TCPOLEN_MAXSEG 4
 #define TCPOPT_WINDOW 3
@@ -253,11 +256,23 @@ ssize_t tcp_repair_serialize(struct tcp_repair_state *state, uint8_t *buf, ssize
     return -1;
   }
 
-  ptrdiff_t fix_part_len = (uintptr_t)&(state->recvq) - (uintptr_t)state;
-  memcpy(buf, state, (size_t)fix_part_len);
-
+  memcpy(buf, state, fixed_part_len);
   memcpy(buf, state->recvq, state->recvq_len);
   memcpy(buf, state->sendq, state->sendq_len);
+
+  return calc_len;
+}
+
+ssize_t tcp_repair_serialize_to_file(int fd, struct tcp_repair_state *state, ssize_t len) {
+  ssize_t calc_len = calculate_serialized_len(state);
+
+  if (len < calc_len) {
+    return -1;
+  }
+
+  write(fd, state, fixed_part_len);
+  write(fd, state->recvq, state->recvq_len);
+  write(fd, state->sendq, state->sendq_len);
 
   return calc_len;
 }
@@ -271,9 +286,8 @@ struct tcp_repair_state *tcp_repair_deserialize(uint8_t *buf) {
   }
 
   struct tcp_repair_state *state = (struct tcp_repair_state *)buf;
-  ptrdiff_t fix_part_len = (uintptr_t)&(state->recvq) - (uintptr_t)state;
 
-  memcpy(ret, state, fix_part_len);
+  memcpy(ret, state, fixed_part_len);
 
   ret->recvq = calloc(state->recvq_len, 1);
   if (ret->recvq == NULL) {
@@ -289,6 +303,33 @@ struct tcp_repair_state *tcp_repair_deserialize(uint8_t *buf) {
     return NULL;
   }
   memcpy(ret->sendq, state->recvq + state->recvq_len, state->sendq_len);
+
+  return ret;
+}
+
+struct tcp_repair_state *tcp_repair_deserialize_from_file(int fd) {
+  struct tcp_repair_state *ret;
+
+  ret = calloc(sizeof(struct tcp_repair_state), 1);
+  if (ret == NULL) {
+    return NULL;
+  }
+  try(read(fd, ret, fixed_part_len));
+
+  ret->recvq = calloc(ret->recvq_len, 1);
+  if (ret->recvq == NULL) {
+    free(ret);
+    return NULL;
+  }
+  try(read(fd, ret->recvq, ret->recvq_len));
+
+  ret->sendq = calloc(ret->sendq_len, 1);
+  if (ret->sendq == NULL) {
+    free(ret->recvq);
+    free(ret);
+    return NULL;
+  }
+  try(read(fd, ret->sendq, ret->sendq_len));
 
   return ret;
 }
