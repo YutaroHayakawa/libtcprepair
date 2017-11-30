@@ -1,21 +1,21 @@
 #pragma once
 
-struct tcp_repair_state {
+#include <linux/tcp.h>
+
+struct tcp_repair_serialize_format {
+  uint32_t saddr;
+  uint16_t sport;
+  uint32_t daddr;
+  uint16_t dport;
   uint32_t seq;
   uint32_t ack;
   uint64_t recvq_len;
   uint64_t sendq_len;
   struct tcp_repair_window window;
   struct tcp_repair_opt opt_mss;
-  uint8_t *recvq;
-  uint8_t *sendq;
-};
+  // send queue
+  // recv queue
+}__attribute__((packed));
 
-
-extern struct tcp_repair_state *tcp_repair_init(void);
-extern void tcp_repair_destroy(struct tcp_repair_state *state);
-extern int tcp_repair_extract_state(int sock, struct tcp_repair_state *state);
-extern int tcp_repair_insert_state(int sock, struct tcp_repair_state *state,
-    struct sockaddr_in *saddr, struct sockaddr_in *daddr);
-extern ssize_t tcp_repair_serialize(struct tcp_repair_state *state, uint8_t *buf, ssize_t len);
-extern struct tcp_repair_state *tcp_repair_deserialize(uint8_t *buf);
+extern ssize_t tcp_repair_serialize_to_mem(int sock, uint8_t **buf, uint32_t saddr, uint16_t sport, uint32_t daddr, uint16_t dport);
+extern int tcp_repair_deserialize_from_mem(uint8_t *buf);
