@@ -9,7 +9,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "tcp_repair.h"
+#include <tcprepair.h>
 
 #define TCPOPT_MAXSEG 2
 #define TCPOLEN_MAXSEG 4
