@@ -18,4 +18,5 @@ struct tcp_repair_serialize_format {
 }__attribute__((packed));
 
 extern ssize_t tcp_repair_serialize_to_mem(int sock, uint8_t **buf, uint32_t saddr, uint16_t sport, uint32_t daddr, uint16_t dport);
+extern ssize_t tcp_repair_serialize_to_mem2(int sock, uint8_t *buf, uint32_t saddr, uint16_t sport, uint32_t daddr, uint16_t dport);
 extern int tcp_repair_deserialize_from_mem(uint8_t *buf);
