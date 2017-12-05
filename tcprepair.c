@@ -219,6 +219,59 @@ catch2:
   return err;
 }
 
+ssize_t tcp_repair_serialize_to_mem2(int sock, uint8_t *buf,
+    uint32_t saddr, uint16_t sport, uint32_t daddr, uint16_t dport) {
+  int err;
+  size_t recvq_len, sendq_len;
+
+#define try1(funccall)        \
+  if ((err = funccall) < 0) { \
+    goto catch1;              \
+  }
+
+  try1(tcp_repair_start(sock));
+  try1(tcp_repair_set_qstate_recv(sock));
+  try1(tcp_repair_get_recvq_len(sock, &recvq_len));
+  try1(tcp_repair_set_qstate_send(sock));
+  try1(tcp_repair_get_sendq_len(sock, &sendq_len));
+
+  struct tcp_repair_serialize_format *format =
+    (struct tcp_repair_serialize_format *)buf;
+
+  format->saddr = saddr;
+  format->sport = sport;
+  format->daddr = daddr;
+  format->dport = dport;
+
+  format->recvq_len = recvq_len;
+  format->sendq_len = sendq_len;
+
+  try1(tcp_repair_get_opt(sock, &format->opt_mss, TCPOPT_MAXSEG));
+  try1(tcp_repair_get_window(sock, &format->window));
+
+  try1(tcp_repair_set_qstate_recv(sock));
+  try1(tcp_repair_get_recvq(sock,
+                            buf + sizeof(struct tcp_repair_serialize_format),
+                            format->recvq_len));
+  try1(tcp_repair_get_ack(sock, &format->ack));
+
+  try1(tcp_repair_set_qstate_send(sock));
+  try1(tcp_repair_get_sendq(
+      sock,
+      buf + sizeof(struct tcp_repair_serialize_format) + format->recvq_len,
+      format->sendq_len));
+  try1(tcp_repair_get_seq(sock, &format->seq));
+
+  close(sock);
+
+#undef try1
+
+  return sizeof(struct tcp_repair_serialize_format) + recvq_len + sendq_len;
+
+catch1:
+  return err;
+}
+
 int tcp_repair_deserialize_from_mem(uint8_t *buf, size_t *size) {
   int err;
   int sock;
