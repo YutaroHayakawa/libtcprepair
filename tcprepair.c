@@ -219,7 +219,7 @@ catch2:
   return err;
 }
 
-int tcp_repair_deserialize_from_mem(uint8_t *buf) {
+int tcp_repair_deserialize_from_mem(uint8_t *buf, size_t *size) {
   int err;
   int sock;
 
@@ -270,6 +270,9 @@ int tcp_repair_deserialize_from_mem(uint8_t *buf) {
 
   try1(tcp_repair_set_opt(sock, &format->opt_mss, TCPOPT_MAXSEG));
   try1(tcp_repair_done(sock));
+
+  *size = sizeof(struct tcp_repair_serialize_format) +
+    format->sendq_len + format->recvq_len;
 
   return sock;
 
